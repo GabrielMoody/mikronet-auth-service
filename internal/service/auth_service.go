@@ -393,8 +393,8 @@ func (a *AuthServiceImpl) ResetPassword(c context.Context, data dto.ResetPasswor
 	if errRepo != nil {
 		var code int
 		switch {
-		case errors.Is(errRepo, helper.ErrNotFound):
-			code = fiber.StatusNotFound
+		case errors.Is(errRepo, helper.ErrExpired):
+			code = fiber.StatusGone
 		default:
 			code = fiber.StatusInternalServerError
 		}

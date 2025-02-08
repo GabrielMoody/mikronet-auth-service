@@ -3,6 +3,7 @@ package helper
 import (
 	"errors"
 	"fmt"
+
 	"github.com/go-playground/validator/v10"
 )
 
@@ -13,6 +14,7 @@ var (
 	ErrBadRequest        = fmt.Errorf("bad request")
 	ErrPasswordIncorrect = fmt.Errorf("password incorrect")
 	ErrBlocked           = fmt.Errorf("user blocked")
+	ErrExpired           = fmt.Errorf("link reset password telah expired/invalid. silahkan melakukan reset password kembali")
 )
 
 type ErrorStruct struct {

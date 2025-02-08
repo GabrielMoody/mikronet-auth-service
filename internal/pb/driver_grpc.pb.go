@@ -19,10 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	DriverService_CreateDriver_FullMethodName      = "/dashboard.DriverService/CreateDriver"
-	DriverService_GetDrivers_FullMethodName        = "/dashboard.DriverService/GetDrivers"
-	DriverService_GetDriverDetails_FullMethodName  = "/dashboard.DriverService/GetDriverDetails"
-	DriverService_SetStatusVerified_FullMethodName = "/dashboard.DriverService/SetStatusVerified"
+	DriverService_CreateDriver_FullMethodName      = "/driver.DriverService/CreateDriver"
+	DriverService_GetDrivers_FullMethodName        = "/driver.DriverService/GetDrivers"
+	DriverService_GetDriverDetails_FullMethodName  = "/driver.DriverService/GetDriverDetails"
+	DriverService_SetStatusVerified_FullMethodName = "/driver.DriverService/SetStatusVerified"
 )
 
 // DriverServiceClient is the client API for DriverService service.
@@ -210,7 +210,7 @@ func _DriverService_SetStatusVerified_Handler(srv interface{}, ctx context.Conte
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var DriverService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "dashboard.DriverService",
+	ServiceName: "driver.DriverService",
 	HandlerType: (*DriverServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

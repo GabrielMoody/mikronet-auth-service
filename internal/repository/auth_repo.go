@@ -10,6 +10,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type AuthRepo interface {
@@ -92,7 +93,10 @@ func (a *AuthRepoImpl) SendResetPassword(c context.Context, email string, code s
 		Code:   code,
 	}
 
-	if err := a.db.WithContext(c).Create(&rp).Error; err != nil {
+	if err := a.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "user_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"code"}),
+	}).Create(&rp).Error; err != nil {
 		return data, helper.ErrDatabase
 	}
 
@@ -103,7 +107,7 @@ func (a *AuthRepoImpl) ResetPassword(c context.Context, password string, code st
 	var rp models.ResetPassword
 
 	if err := a.db.WithContext(c).First(&rp, "code = ?", code).Error; err != nil {
-		return "Link has expired or not valid", helper.ErrNotFound
+		return "Link has expired or not valid", helper.ErrExpired
 	}
 
 	user := models.User{
