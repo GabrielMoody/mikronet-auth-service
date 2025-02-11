@@ -2,6 +2,7 @@ package handler
 
 import (
 	"github.com/GabrielMoody/mikronet-auth-service/internal/controller"
+	"github.com/GabrielMoody/mikronet-auth-service/internal/gRPC"
 	"github.com/GabrielMoody/mikronet-auth-service/internal/middleware"
 	"github.com/GabrielMoody/mikronet-auth-service/internal/pb"
 	"github.com/GabrielMoody/mikronet-auth-service/internal/repository"
@@ -26,4 +27,11 @@ func AuthHandler(r fiber.Router, db *gorm.DB, user pb.UserServiceClient, driver 
 	authHandler.Put("/reset-password/:code", authController.ResetPassword)
 	authHandler.Put("/change-password", authController.ChangePassword)
 	authHandler.Get("/reset-password/:code", authController.ResetPasswordUI)
+}
+
+func GRPCHandler(db *gorm.DB) *gRPC.GRPC {
+	repo := repository.NewAuthRepo(db)
+	grpc := gRPC.NewgRPC(repo)
+
+	return grpc
 }

@@ -309,10 +309,27 @@ func (a *AuthControllerImpl) LoginUser(c *fiber.Ctx) error {
 		})
 	}
 
+	refreshClaims := jwt.MapClaims{
+		"id":  res.ID,
+		"exp": time.Now().Add(time.Hour * 24 * 7).Unix(),
+		"iss": os.Getenv("JWT_ISS"),
+	}
+
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
+	rt, errRefreshToken := refreshToken.SignedString([]byte(os.Getenv("JWT_SECRET")))
+
+	if errRefreshToken != nil {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"status": "error",
+			"errors": "Invalid refresh token",
+		})
+	}
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status": "success",
 		"data": fiber.Map{
-			"token": t,
+			"token":         t,
+			"refresh_token": rt,
 		},
 	})
 }

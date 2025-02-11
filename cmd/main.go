@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 	"os"
 
 	"github.com/GabrielMoody/mikronet-auth-service/internal/handler"
@@ -13,10 +14,12 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/reflection"
 )
 
 func main() {
 	app := fiber.New()
+	grpcServer := grpc.NewServer()
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
 		AllowHeaders: "*",
@@ -57,6 +60,22 @@ func main() {
 	dashboardPB := pb.NewDashboardServiceClient(dashboardConn)
 
 	db := models.DatabaseInit()
+
+	grpcHandler := handler.GRPCHandler(db)
+	pb.RegisterAuthenticationServiceServer(grpcServer, grpcHandler)
+	reflection.Register(grpcServer)
+
+	go func() {
+		fmt.Println("gRPC server running on 5008")
+		lis, err := net.Listen("tcp", "0.0.0.0:5008")
+		if err != nil {
+			log.Fatalf("failed to listen: %v", err)
+		}
+
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
+		}
+	}()
 
 	api := app.Group("/")
 

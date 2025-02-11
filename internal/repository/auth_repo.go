@@ -19,10 +19,19 @@ type AuthRepo interface {
 	SendResetPassword(c context.Context, email string, code string) (data models.ResetPassword, err error)
 	ResetPassword(c context.Context, password string, code string) (res string, err error)
 	ChangePassword(c context.Context, oldPassword, newPassword, id string) (res string, err error)
+	DeleteUser(c context.Context, id string) (res models.User, err error)
 }
 
 type AuthRepoImpl struct {
 	db *gorm.DB
+}
+
+func (a *AuthRepoImpl) DeleteUser(c context.Context, id string) (res models.User, err error) {
+	if err := a.db.WithContext(c).Delete(&res, "id = ?", id).Error; err != nil {
+		return res, helper.ErrDatabase
+	}
+
+	return res, nil
 }
 
 func (a *AuthRepoImpl) ChangePassword(c context.Context, oldPassword, newPassword, id string) (res string, err error) {
