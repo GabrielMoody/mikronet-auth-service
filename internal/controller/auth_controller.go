@@ -160,7 +160,7 @@ func (a *AuthControllerImpl) ChangePassword(c *fiber.Ctx) error {
 		})
 	}
 
-	res, errService := a.AuthService.ChangePasswordService(ctx, payload["id"].(string), user)
+	_, errService := a.AuthService.ChangePasswordService(ctx, payload["id"].(string), user)
 
 	if errService != nil && errService.ValidationErrors != nil {
 		return c.Status(errService.Code).JSON(fiber.Map{
@@ -177,8 +177,8 @@ func (a *AuthControllerImpl) ChangePassword(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"status": "success",
-		"data":   res,
+		"status":  "success",
+		"message": "Berhasil mengubah password!",
 	})
 }
 
@@ -193,7 +193,7 @@ func (a *AuthControllerImpl) CreateUser(c *fiber.Ctx) error {
 		})
 	}
 
-	res, errService := a.AuthService.CreateUserService(ctx, user, "user")
+	_, errService := a.AuthService.CreateUserService(ctx, user, "user")
 
 	if errService != nil && errService.ValidationErrors != nil {
 		return c.Status(errService.Code).JSON(fiber.Map{
@@ -210,8 +210,8 @@ func (a *AuthControllerImpl) CreateUser(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"status": "success",
-		"data":   res,
+		"status":  "success",
+		"message": "akun berhasil dibuat!",
 	})
 }
 
@@ -242,7 +242,7 @@ func (a *AuthControllerImpl) CreateDriver(c *fiber.Ctx) error {
 		})
 	}
 
-	res, errService := a.AuthService.CreateDriverService(ctx, driver, "driver", fileData)
+	_, errService := a.AuthService.CreateDriverService(ctx, driver, "driver", fileData)
 
 	if errService != nil && errService.ValidationErrors != nil {
 		return c.Status(errService.Code).JSON(fiber.Map{
@@ -259,8 +259,8 @@ func (a *AuthControllerImpl) CreateDriver(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"status": "success",
-		"data":   res,
+		"status":  "success",
+		"message": "akun berhasil dibuat!",
 	})
 }
 
@@ -328,7 +328,7 @@ func (a *AuthControllerImpl) LoginUser(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status": "success",
 		"data": fiber.Map{
-			"token":         t,
+			"access_token":  t,
 			"refresh_token": rt,
 		},
 	})
@@ -355,8 +355,8 @@ func (a *AuthControllerImpl) SendResetPasswordLink(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"status": "success",
-		"data":   res,
+		"status":  "success",
+		"message": res,
 	})
 }
 
@@ -372,7 +372,7 @@ func (a *AuthControllerImpl) ResetPassword(c *fiber.Ctx) error {
 		})
 	}
 
-	res, errService := a.AuthService.ResetPassword(ctx, rp, code)
+	_, errService := a.AuthService.ResetPassword(ctx, rp, code)
 
 	if errService != nil && errService.ValidationErrors != nil {
 		return c.Status(errService.Code).JSON(fiber.Map{
@@ -389,8 +389,8 @@ func (a *AuthControllerImpl) ResetPassword(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"status": "success",
-		"data":   res,
+		"status":  "success",
+		"message": "Berhasil melakukan reset password!",
 	})
 }
 
