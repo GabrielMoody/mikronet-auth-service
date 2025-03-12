@@ -18,8 +18,6 @@ import (
 type AuthController interface {
 	CreateUser(c *fiber.Ctx) error
 	CreateDriver(c *fiber.Ctx) error
-	CreateOwner(c *fiber.Ctx) error
-	CreateGov(c *fiber.Ctx) error
 	LoginUser(c *fiber.Ctx) error
 	SendResetPasswordLink(c *fiber.Ctx) error
 	ResetPassword(c *fiber.Ctx) error
@@ -44,106 +42,6 @@ func readImage(image *multipart.FileHeader) ([]byte, error) {
 	}
 
 	return fileData, nil
-}
-
-func (a *AuthControllerImpl) CreateGov(c *fiber.Ctx) error {
-	ctx := c.Context()
-	var req dto.GovRegistrationReq
-	image, err := c.FormFile("profile_picture")
-
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status": "Error",
-			"errors": "gagal memuat gambar",
-		})
-	}
-
-	if err = c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status": "Error",
-			"errors": err.Error(),
-		})
-	}
-
-	fileData, err := readImage(image)
-
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status": "Error",
-			"errors": err.Error(),
-		})
-	}
-
-	res, errService := a.AuthService.CreateGovService(ctx, req, "government", fileData)
-
-	if errService != nil && errService.ValidationErrors != nil {
-		return c.Status(errService.Code).JSON(fiber.Map{
-			"status": "error",
-			"errors": errService.ValidationErrors,
-		})
-	}
-
-	if errService != nil && errService.Err != nil {
-		return c.Status(errService.Code).JSON(fiber.Map{
-			"status": "error",
-			"errors": errService.Err.Error(),
-		})
-	}
-
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"status": "Success",
-		"data":   res,
-	})
-}
-
-func (a *AuthControllerImpl) CreateOwner(c *fiber.Ctx) error {
-	var owner dto.OwnerRegistrationsReq
-	ctx := c.Context()
-
-	image, err := c.FormFile("profile_picture")
-
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status": "error",
-			"errors": "error reading image",
-		})
-	}
-
-	if err := c.BodyParser(&owner); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status": "error",
-			"errors": err.Error(),
-		})
-	}
-
-	fileData, err := readImage(image)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status": "error",
-			"errors": err.Error(),
-		})
-	}
-
-	res, errService := a.AuthService.CreateOwnerService(ctx, owner, "owner", fileData)
-
-	if errService != nil && errService.ValidationErrors != nil {
-		return c.Status(errService.Code).JSON(fiber.Map{
-			"status": "error",
-			"errors": errService.ValidationErrors,
-		})
-	}
-
-	if errService != nil && errService.Err != nil {
-		return c.Status(errService.Code).JSON(fiber.Map{
-			"status": "error",
-			"errors": errService.Err.Error(),
-		})
-	}
-
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"status": "success",
-		"data":   res,
-	})
 }
 
 func (a *AuthControllerImpl) ChangePassword(c *fiber.Ctx) error {

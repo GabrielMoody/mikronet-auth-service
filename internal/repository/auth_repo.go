@@ -14,16 +14,43 @@ import (
 )
 
 type AuthRepo interface {
-	CreateUser(c context.Context, data models.User) (tx *gorm.DB, res string, err error)
+	CreateUser(c context.Context, data models.User) (res string, err error)
+	CreateDriver(c context.Context, data models.User) (res string, err error)
 	LoginUser(c context.Context, data dto.UserLoginReq) (res models.User, err error)
 	SendResetPassword(c context.Context, email string, code string) (data models.ResetPassword, err error)
 	ResetPassword(c context.Context, password string, code string) (res string, err error)
 	ChangePassword(c context.Context, oldPassword, newPassword, id string) (res string, err error)
 	DeleteUser(c context.Context, id string) (res models.User, err error)
+	isBlocked(c context.Context, id string) (bool, error)
+	isVerified(c context.Context, id string) (bool, error)
 }
 
 type AuthRepoImpl struct {
 	db *gorm.DB
+}
+
+func (a *AuthRepoImpl) isBlocked(c context.Context, id string) (bool, error) {
+	var res models.BlockedAccount
+	if err := a.db.WithContext(c).First(&res, "account_id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, helper.ErrDatabase
+	}
+
+	return true, nil
+}
+
+func (a *AuthRepoImpl) isVerified(c context.Context, id string) (bool, error) {
+	var res models.DriverDetails
+	if err := a.db.WithContext(c).First(&res, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, helper.ErrDatabase
+	}
+
+	return res.Verified, nil
 }
 
 func (a *AuthRepoImpl) DeleteUser(c context.Context, id string) (res models.User, err error) {
@@ -53,27 +80,37 @@ func (a *AuthRepoImpl) ChangePassword(c context.Context, oldPassword, newPasswor
 }
 
 func (a *AuthRepoImpl) LoginUser(c context.Context, data dto.UserLoginReq) (res models.User, err error) {
-	var user models.User
-
-	if err := a.db.WithContext(c).First(&user, "email = ?", data.Email).Error; err != nil {
+	if err := a.db.WithContext(c).First(&res, "email = ?", data.Email).Error; err != nil {
 		return res, helper.ErrNotFound
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(data.Password)); err != nil {
+	b, _ := a.isBlocked(c, res.ID)
+	if b {
+		return res, helper.ErrBlockedAccount
+	}
+
+	if res.Role == "driver" {
+		v, _ := a.isVerified(c, res.ID)
+		if !v {
+			return res, helper.ErrNotVerified
+		}
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(res.Password), []byte(data.Password)); err != nil {
 		return res, helper.ErrPasswordIncorrect
 	}
 
-	return user, nil
+	return res, nil
 }
 
-func (a *AuthRepoImpl) CreateUser(c context.Context, data models.User) (tx *gorm.DB, res string, err error) {
+func (a *AuthRepoImpl) CreateUser(c context.Context, data models.User) (res string, err error) {
+	tx := a.db.WithContext(c).Begin()
+
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
 		}
 	}()
-
-	tx = a.db.WithContext(c).Begin()
 
 	if err := tx.Create(&data).Error; err != nil {
 		tx.Rollback()
@@ -81,13 +118,41 @@ func (a *AuthRepoImpl) CreateUser(c context.Context, data models.User) (tx *gorm
 		var mysqlErr *mysql.MySQLError
 
 		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
-			return nil, "", helper.ErrDuplicateEntry
+			return "", helper.ErrDuplicateEntry
 		}
 
-		return nil, "", helper.ErrDatabase
+		return "", helper.ErrDatabase
 	}
 
-	return tx, data.ID, nil
+	tx.Commit()
+
+	return data.ID, nil
+}
+
+func (a *AuthRepoImpl) CreateDriver(c context.Context, data models.User) (res string, err error) {
+	tx := a.db.WithContext(c).Begin()
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Create(&data).Error; err != nil {
+		tx.Rollback()
+
+		var mysqlErr *mysql.MySQLError
+
+		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+			return "", helper.ErrDuplicateEntry
+		}
+
+		return "", helper.ErrDatabase
+	}
+
+	tx.Commit()
+
+	return data.ID, nil
 }
 
 func (a *AuthRepoImpl) SendResetPassword(c context.Context, email string, code string) (data models.ResetPassword, err error) {

@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/GabrielMoody/mikronet-auth-service/internal/dto"
 	"github.com/GabrielMoody/mikronet-auth-service/internal/helper"
 	"github.com/GabrielMoody/mikronet-auth-service/internal/models"
-	"github.com/GabrielMoody/mikronet-auth-service/internal/pb"
 	"github.com/GabrielMoody/mikronet-auth-service/internal/repository"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -19,8 +21,6 @@ import (
 type AuthService interface {
 	CreateUserService(c context.Context, data dto.UserRegistrationsReq, role string) (res string, err *helper.ErrorStruct)
 	CreateDriverService(c context.Context, data dto.DriverRegistrationsReq, role string, image []byte) (res string, err *helper.ErrorStruct)
-	CreateOwnerService(c context.Context, data dto.OwnerRegistrationsReq, role string, image []byte) (res string, err *helper.ErrorStruct)
-	CreateGovService(c context.Context, data dto.GovRegistrationReq, role string, image []byte) (res string, err *helper.ErrorStruct)
 	LoginUserService(c context.Context, data dto.UserLoginReq) (res dto.UserRegistrationsResp, err *helper.ErrorStruct)
 	SendResetPasswordService(c context.Context, email dto.ForgotPasswordReq) (res string, err *helper.ErrorStruct)
 	ResetPassword(c context.Context, data dto.ResetPasswordReq, code string) (res string, err *helper.ErrorStruct)
@@ -28,103 +28,11 @@ type AuthService interface {
 }
 
 type AuthServiceImpl struct {
-	AuthRepo    repository.AuthRepo
-	pbUser      pb.UserServiceClient
-	pbDriver    pb.DriverServiceClient
-	pbDashboard pb.DashboardServiceClient
+	AuthRepo repository.AuthRepo
 }
 
-func (a *AuthServiceImpl) CreateGovService(c context.Context, data dto.GovRegistrationReq, role string, image []byte) (res string, err *helper.ErrorStruct) {
-	if errValidate := helper.Validate.Struct(data); errValidate != nil {
-		return "", &helper.ErrorStruct{
-			Code:             fiber.StatusBadRequest,
-			ValidationErrors: helper.ValidationError(errValidate),
-		}
-	}
-
-	hashed, errBcrypt := bcrypt.GenerateFromPassword([]byte(data.Password), bcrypt.DefaultCost)
-
-	if errBcrypt != nil {
-		return "", &helper.ErrorStruct{
-			Code: fiber.StatusInternalServerError,
-			Err:  errBcrypt,
-		}
-	}
-
-	tx, resRepo, errRepo := a.AuthRepo.CreateUser(c, models.User{
-		ID:       uuid.New().String(),
-		Email:    data.Email,
-		Password: string(hashed),
-		Role:     role,
-	})
-
-	if errRepo != nil {
-		return res, helper.CheckError(errRepo)
-	}
-
-	_, errPb := a.pbDashboard.CreateGov(c, &pb.CreateGovReq{
-		Id:             resRepo,
-		FirstName:      data.Name,
-		Email:          data.Email,
-		PhoneNumber:    data.PhoneNumber,
-		ProfilePicture: image,
-	})
-
-	if errPb != nil {
-		tx.Rollback()
-		return res, helper.CheckError(errPb)
-	}
-
-	tx.Commit()
-
-	return resRepo, nil
-}
-
-func (a *AuthServiceImpl) CreateOwnerService(c context.Context, data dto.OwnerRegistrationsReq, role string, image []byte) (res string, err *helper.ErrorStruct) {
-	if errValidate := helper.Validate.Struct(data); errValidate != nil {
-		return "", &helper.ErrorStruct{
-			Code:             fiber.StatusBadRequest,
-			ValidationErrors: helper.ValidationError(errValidate),
-		}
-	}
-
-	hashed, errBcrypt := bcrypt.GenerateFromPassword([]byte(data.Password), bcrypt.DefaultCost)
-
-	if errBcrypt != nil {
-		return "", &helper.ErrorStruct{
-			Code: fiber.StatusInternalServerError,
-			Err:  errBcrypt,
-		}
-	}
-
-	tx, resRepo, errRepo := a.AuthRepo.CreateUser(c, models.User{
-		ID:       uuid.New().String(),
-		Email:    data.Email,
-		Password: string(hashed),
-		Role:     role,
-	})
-
-	if errRepo != nil {
-		return res, helper.CheckError(errRepo)
-	}
-
-	_, errPb := a.pbDashboard.CreateOwner(c, &pb.CreateOwnerReq{
-		Id:             resRepo,
-		FirstName:      data.Name,
-		Email:          data.Email,
-		PhoneNumber:    data.PhoneNumber,
-		Nik:            data.NIK,
-		ProfilePicture: image,
-	})
-
-	if errPb != nil {
-		tx.Rollback()
-		return res, helper.CheckError(errPb)
-	}
-
-	tx.Commit()
-
-	return resRepo, nil
+func generateQrisData(id string) string {
+	return fmt.Sprintf("0002010102115802ID6006Manado6208%s530336054060006304A1B2", id)
 }
 
 func (a *AuthServiceImpl) CreateDriverService(c context.Context, data dto.DriverRegistrationsReq, role string, image []byte) (res string, err *helper.ErrorStruct) {
@@ -143,34 +51,36 @@ func (a *AuthServiceImpl) CreateDriverService(c context.Context, data dto.Driver
 			Code: fiber.StatusInternalServerError,
 		}
 	}
+	id := uuid.New().String()
 
-	tx, resRepo, errRepo := a.AuthRepo.CreateUser(c, models.User{
-		ID:       uuid.New().String(),
+	qris := generateQrisData(id)
+	timestamp := time.Now().Format("20060102_150405")
+	fullPath := id + "_" + timestamp
+	filePath := filepath.Join("./uploads", fullPath)
+
+	user := models.User{
+		ID:       id,
 		Email:    data.Email,
 		Password: string(hashed),
 		Role:     role,
-	})
+		DriverDetail: models.DriverDetails{
+			ID:             id,
+			Name:           data.Name,
+			PhoneNumber:    data.PhoneNumber,
+			LicenseNumber:  data.LicenseNumber,
+			SIM:            data.SIM,
+			QrisData:       qris,
+			ProfilePicture: filePath,
+		},
+	}
+
+	resRepo, errRepo := a.AuthRepo.CreateDriver(c, user)
 
 	if errRepo != nil {
 		return res, helper.CheckError(errRepo)
 	}
 
-	_, errPb := a.pbDriver.CreateDriver(c, &pb.CreateDriverRequest{
-		Id:             resRepo,
-		Name:           data.Name,
-		Email:          data.Email,
-		PhoneNumber:    data.PhoneNumber,
-		LicenseNumber:  data.LicenseNumber,
-		Sim:            data.SIM,
-		ProfilePicture: image,
-	})
-
-	if errPb != nil {
-		tx.Rollback()
-		return res, helper.CheckError(errPb)
-	}
-
-	tx.Commit()
+	os.WriteFile(filePath, image, 0644)
 
 	return resRepo, nil
 }
@@ -231,35 +141,42 @@ func (a *AuthServiceImpl) CreateUserService(c context.Context, data dto.UserRegi
 		}
 	}
 
-	tx, resRepo, errRepo := a.AuthRepo.CreateUser(c, models.User{
-		ID:       uuid.New().String(),
+	id := uuid.New().String()
+
+	user := models.User{
+		ID:       id,
 		Email:    data.Email,
 		Password: string(hashed),
 		Role:     role,
-	})
+		PassengerDetail: models.PassengerDetails{
+			ID: id,
+		},
+	}
+
+	resRepo, errRepo := a.AuthRepo.CreateUser(c, user)
 
 	if errRepo != nil {
 		return res, helper.CheckError(errRepo)
 	}
 
-	_, errPb := a.pbUser.CreateUser(c, &pb.CreateUserRequest{
-		User: &pb.User{
-			Id:    resRepo,
-			Email: data.Email,
-		},
-	})
+	// _, errPb := a.pbUser.CreateUser(c, &pb.CreateUserRequest{
+	// 	User: &pb.User{
+	// 		Id:    resRepo,
+	// 		Email: data.Email,
+	// 	},
+	// })
 
-	if errPb != nil {
-		tx.Rollback()
-		return res, helper.CheckError(errPb)
-	}
+	// if errPb != nil {
+	// 	tx.Rollback()
+	// 	return res, helper.CheckError(errPb)
+	// }
 
-	if err := tx.Commit().Error; err != nil {
-		return res, &helper.ErrorStruct{
-			Err:  err,
-			Code: fiber.StatusInternalServerError,
-		}
-	}
+	// if err := tx.Commit().Error; err != nil {
+	// 	return res, &helper.ErrorStruct{
+	// 		Err:  err,
+	// 		Code: fiber.StatusInternalServerError,
+	// 	}
+	// }
 
 	return resRepo, nil
 }
@@ -272,20 +189,20 @@ func (a *AuthServiceImpl) LoginUserService(c context.Context, data dto.UserLogin
 		}
 	}
 
-	resPb, errPb := a.pbDashboard.IsBlocked(c, &pb.IsBlockedReq{
-		Id: res.ID,
-	})
+	// resPb, errPb := a.pbDashboard.IsBlocked(c, &pb.IsBlockedReq{
+	// 	Id: res.ID,
+	// })
 
-	if errPb != nil {
-		return res, helper.CheckError(errPb)
-	}
+	// if errPb != nil {
+	// 	return res, helper.CheckError(errPb)
+	// }
 
-	if resPb.IsBlocked {
-		return res, &helper.ErrorStruct{
-			Err:  helper.ErrBlocked,
-			Code: fiber.StatusForbidden,
-		}
-	}
+	// if resPb.IsBlocked {
+	// 	return res, &helper.ErrorStruct{
+	// 		Err:  helper.ErrBlocked,
+	// 		Code: fiber.StatusForbidden,
+	// 	}
+	// }
 
 	resRepo, errRepo := a.AuthRepo.LoginUser(c, data)
 
@@ -313,18 +230,7 @@ func (a *AuthServiceImpl) SendResetPasswordService(c context.Context, email dto.
 	resRepo, errRepo := a.AuthRepo.SendResetPassword(c, email.Email, code)
 
 	if errRepo != nil {
-		var code int
-		switch {
-		case errors.Is(errRepo, helper.ErrNotFound):
-			code = fiber.StatusNotFound
-		default:
-			code = fiber.StatusInternalServerError
-		}
-
-		return res, &helper.ErrorStruct{
-			Err:  errRepo,
-			Code: code,
-		}
+		return res, helper.CheckError(errRepo)
 	}
 
 	const CONFIG_SMTP_HOST = "smtp.gmail.com"
@@ -408,11 +314,8 @@ func (a *AuthServiceImpl) ResetPassword(c context.Context, data dto.ResetPasswor
 	return resRepo, nil
 }
 
-func NewAuthService(authRepo repository.AuthRepo, user pb.UserServiceClient, driver pb.DriverServiceClient, dashboard pb.DashboardServiceClient) AuthService {
+func NewAuthService(authRepo repository.AuthRepo) AuthService {
 	return &AuthServiceImpl{
-		AuthRepo:    authRepo,
-		pbUser:      user,
-		pbDriver:    driver,
-		pbDashboard: dashboard,
+		AuthRepo: authRepo,
 	}
 }
