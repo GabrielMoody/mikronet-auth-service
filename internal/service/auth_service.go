@@ -20,7 +20,7 @@ import (
 
 type AuthService interface {
 	CreateUserService(c context.Context, data dto.UserRegistrationsReq, role string) (res string, err *helper.ErrorStruct)
-	CreateDriverService(c context.Context, data dto.DriverRegistrationsReq, role string, image []byte) (res string, err *helper.ErrorStruct)
+	CreateDriverService(c context.Context, data dto.DriverRegistrationsReq, role string, pp []byte, ktp []byte) (res string, err *helper.ErrorStruct)
 	LoginUserService(c context.Context, data dto.UserLoginReq) (res dto.UserRegistrationsResp, err *helper.ErrorStruct)
 	SendResetPasswordService(c context.Context, email dto.ForgotPasswordReq) (res string, err *helper.ErrorStruct)
 	ResetPassword(c context.Context, data dto.ResetPasswordReq, code string) (res string, err *helper.ErrorStruct)
@@ -35,7 +35,7 @@ func generateQrisData(id string) string {
 	return fmt.Sprintf("0002010102115802ID6006Manado6208%s530336054060006304A1B2", id)
 }
 
-func (a *AuthServiceImpl) CreateDriverService(c context.Context, data dto.DriverRegistrationsReq, role string, image []byte) (res string, err *helper.ErrorStruct) {
+func (a *AuthServiceImpl) CreateDriverService(c context.Context, data dto.DriverRegistrationsReq, role string, pp []byte, ktp []byte) (res string, err *helper.ErrorStruct) {
 	if errValidate := helper.Validate.Struct(data); errValidate != nil {
 		return "", &helper.ErrorStruct{
 			Code:             fiber.StatusBadRequest,
@@ -71,6 +71,7 @@ func (a *AuthServiceImpl) CreateDriverService(c context.Context, data dto.Driver
 			SIM:            data.SIM,
 			QrisData:       qris,
 			ProfilePicture: filePath,
+			KTP:            filePath + "_ktp",
 		},
 	}
 
@@ -80,7 +81,8 @@ func (a *AuthServiceImpl) CreateDriverService(c context.Context, data dto.Driver
 		return res, helper.CheckError(errRepo)
 	}
 
-	os.WriteFile(filePath, image, 0644)
+	os.WriteFile(filePath, pp, 0644)
+	os.WriteFile(filePath+"_ktp", ktp, 0644)
 
 	return resRepo, nil
 }

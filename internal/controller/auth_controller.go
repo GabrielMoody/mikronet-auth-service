@@ -116,7 +116,8 @@ func (a *AuthControllerImpl) CreateUser(c *fiber.Ctx) error {
 func (a *AuthControllerImpl) CreateDriver(c *fiber.Ctx) error {
 	var driver dto.DriverRegistrationsReq
 	ctx := c.Context()
-	image, err := c.FormFile("profile_picture")
+	pp, err := c.FormFile("profile_picture")
+	ktp, err := c.FormFile("ktp")
 
 	if err != nil && !errors.Is(err, http.ErrMissingFile) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -132,7 +133,7 @@ func (a *AuthControllerImpl) CreateDriver(c *fiber.Ctx) error {
 		})
 	}
 
-	fileData, err := readImage(image)
+	fileDataPP, err := readImage(pp)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status": "error",
@@ -140,7 +141,15 @@ func (a *AuthControllerImpl) CreateDriver(c *fiber.Ctx) error {
 		})
 	}
 
-	_, errService := a.AuthService.CreateDriverService(ctx, driver, "driver", fileData)
+	fileDataKtp, err := readImage(ktp)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status": "error",
+			"errors": err.Error(),
+		})
+	}
+
+	_, errService := a.AuthService.CreateDriverService(ctx, driver, "driver", fileDataPP, fileDataKtp)
 
 	if errService != nil && errService.ValidationErrors != nil {
 		return c.Status(errService.Code).JSON(fiber.Map{
