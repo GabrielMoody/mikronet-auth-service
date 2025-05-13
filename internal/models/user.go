@@ -33,8 +33,9 @@ type DriverDetails struct {
 }
 
 type PassengerDetails struct {
-	ID   string `gorm:"primaryKey;type:varchar(255)"`
-	Name string `gorm:"type:varchar(255)"`
+	ID          string    `gorm:"primaryKey;type:varchar(255)"`
+	Name        string    `gorm:"type:varchar(255)"`
+	DateOfBirth time.Time `gorm:"type:date"`
 }
 
 type Admin struct {
@@ -53,12 +54,12 @@ type BlockedAccount struct {
 	ID     int    `gorm:"primaryKey"`
 	UserID string `gorm:"type:varchar(255);unique"`
 	User   User   `gorm:"foreignKey:UserID;references:ID;constraint:OnDelete:CASCADE"`
-	Role   string `gorm:"type:varchar(255)"`
 }
 
 type Route struct {
 	ID        uint   `gorm:"primaryKey"`
 	RouteName string `gorm:"type:varchar(255)"`
+	Amount    int    `gorm:"type:int"`
 }
 
 type Review struct {
@@ -69,4 +70,15 @@ type Review struct {
 	Driver      DriverDetails    `gorm:"foreignKey:DriverID;references:ID;constraint:OnDelete:CASCADE"`
 	Comment     string           `gorm:"type:varchar(255)"`
 	Star        int
+	CreatedAt   time.Time `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
+}
+
+type Transaction struct {
+	ID          int        `gorm:"primaryKey"`
+	PassengerID string     `gorm:"type:varchar(255)"`
+	Passenger   User       `gorm:"foreignKey:PassengerID;references:ID;constraint:OnDelete:CASCADE"`
+	DriverID    string     `gorm:"type:varchar(255)"`
+	Driver      User       `gorm:"foreignKey:DriverID;references:ID;constraint:OnDelete:CASCADE"`
+	Amount      int        `gorm:"type:int"`
+	CreatedAt   *time.Time `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
 }

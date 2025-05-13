@@ -12,6 +12,8 @@ RUN cp /usr/share/zoneinfo/Asia/Singapore /etc/localtime && \
 
 FROM alpine
 WORKDIR /usr/bin
+RUN apk add --no-cache tzdata
+ENV TZ=Asia/Singapore
 COPY --from=build /go/bin .
 COPY --from=build /app/views /usr/bin/views
 COPY --from=build /app/static /usr/bin/static
