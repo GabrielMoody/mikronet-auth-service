@@ -135,6 +135,8 @@ func (a *AuthServiceImpl) CreateUserService(c context.Context, data dto.UserRegi
 	}
 
 	hashed, errHash := bcrypt.GenerateFromPassword([]byte(data.Password), bcrypt.DefaultCost)
+	layout := "02-01-2006"
+	parsedDate, _ := time.Parse(layout, data.DateOfBirth)
 
 	if errHash != nil {
 		return "", &helper.ErrorStruct{
@@ -151,7 +153,10 @@ func (a *AuthServiceImpl) CreateUserService(c context.Context, data dto.UserRegi
 		Password: string(hashed),
 		Role:     role,
 		PassengerDetail: models.PassengerDetails{
-			ID: id,
+			ID:          id,
+			Name:        data.Name,
+			DateOfBirth: parsedDate,
+			Age:         data.Age,
 		},
 	}
 
@@ -160,25 +165,6 @@ func (a *AuthServiceImpl) CreateUserService(c context.Context, data dto.UserRegi
 	if errRepo != nil {
 		return res, helper.CheckError(errRepo)
 	}
-
-	// _, errPb := a.pbUser.CreateUser(c, &pb.CreateUserRequest{
-	// 	User: &pb.User{
-	// 		Id:    resRepo,
-	// 		Email: data.Email,
-	// 	},
-	// })
-
-	// if errPb != nil {
-	// 	tx.Rollback()
-	// 	return res, helper.CheckError(errPb)
-	// }
-
-	// if err := tx.Commit().Error; err != nil {
-	// 	return res, &helper.ErrorStruct{
-	// 		Err:  err,
-	// 		Code: fiber.StatusInternalServerError,
-	// 	}
-	// }
 
 	return resRepo, nil
 }
@@ -190,21 +176,6 @@ func (a *AuthServiceImpl) LoginUserService(c context.Context, data dto.UserLogin
 			ValidationErrors: helper.ValidationError(errValidate),
 		}
 	}
-
-	// resPb, errPb := a.pbDashboard.IsBlocked(c, &pb.IsBlockedReq{
-	// 	Id: res.ID,
-	// })
-
-	// if errPb != nil {
-	// 	return res, helper.CheckError(errPb)
-	// }
-
-	// if resPb.IsBlocked {
-	// 	return res, &helper.ErrorStruct{
-	// 		Err:  helper.ErrBlocked,
-	// 		Code: fiber.StatusForbidden,
-	// 	}
-	// }
 
 	resRepo, errRepo := a.AuthRepo.LoginUser(c, data)
 

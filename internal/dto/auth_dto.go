@@ -11,6 +11,9 @@ type (
 		Email                string `json:"email" validate:"required,email" form:"email"`
 		Password             string `json:"password" form:"password" validate:"required,min=8"`
 		PasswordConfirmation string `json:"password_confirmation" form:"password_confirmation" validate:"required,eqfield=Password"`
+		Name                 string `json:"name"`
+		DateOfBirth          string `json:"date_of_birth"`
+		Age                  int    `json:"age"`
 	}
 
 	DriverRegistrationsReq struct {
